@@ -1,0 +1,52 @@
+## Base service of bizcrm application:
+## Please read use guide in ./docs/dev-on-docker-env-note.pdf
+## This app will deploy on ECS so we can't use custom network need use deprecated docker 'link' feature
+## 1. Combined this file with docker-composer.prod.yml to build and run production image
+## 2. Combined this file with docker-composer.overrides.yml to build and run dev image
+version: "3.7"
+services:
+  timesheet_app:
+    image: timesheet-app:${TAG:-latest}
+    container_name: timesheet_app
+    init: true
+    environment:
+      APPLICATION_ENV: production
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile
+      target: timesheet-app
+      args:
+        GIT_COMMIT_HASH: N/A
+        GIT_BRANCH_NAME: N/A
+    tty: true
+    restart: always
+  timesheet_public:
+    image: timesheet-public:${TAG:-latest}
+    container_name: timesheet_public
+    init: true
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile
+      target: timesheet-public
+      args:
+        GIT_COMMIT_HASH: N/A
+        GIT_BRANCH_NAME: N/A
+    ports:
+      - 9000:80
+    restart: always
+    depends_on:
+      - timesheet_app
+    environment:
+        - APP_CONTAINER_LINK=timesheet_app:9000
+  blackfire:
+    image: blackfire/blackfire:2
+    ports: ["8307"]
+    container_name: timesheet_blackfire
+    restart: always
+    init: true
+    environment:
+      BLACKFIRE_SERVER_ID: 0af32089-3bc0-4449-af96-79b23c165a8e
+      BLACKFIRE_SERVER_TOKEN: b650a3f2f67b42df6a76aa43f5cf8e9a8a9707f80163e036198ef2c29c8b1c8c
+networks:
+  default:
+    name: timesheet
